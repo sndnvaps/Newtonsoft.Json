@@ -19,7 +19,7 @@
         "System.Xml.Linq": ""
       }
     },
-    ".NETFramework,Version=v4.0,Profile=Client": {
+    "net40": {
       "frameworkAssemblies": {
         "System.Data": "",
         "System.Numerics": "",
