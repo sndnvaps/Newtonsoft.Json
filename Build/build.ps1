@@ -233,7 +233,11 @@ function DnxTests($build)
 
   Write-Host -ForegroundColor Green "Restoring packages for $name"
   Write-Host
-  exec { dnu restore "$workingSourceDir\Newtonsoft.Json.Tests\project.json" | Out-Default }
+  exec
+  {
+    dnu restore "$workingSourceDir\Newtonsoft.Json.Tests\project.json" | Out-Default
+    Write-Host "Last exit code: $lastexitcode"
+  }
 
   Write-Host -ForegroundColor Green "Ensuring test project builds for $name"
   Write-Host
