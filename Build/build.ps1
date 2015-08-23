@@ -219,11 +219,13 @@ function DnxBuild($build)
     try {
       dnu restore "$workingSourceDir\Newtonsoft.Json\project.json" | Out-Default
       Write-Host "Restore last exit code: $lastexitcode"
+      $global:lastexitcode = 0
+      $lastexitcode = 0
     }
     catch [System.Management.Automation.RemoteException]
     {
       Write-Host "Restore last exit code: $lastexitcode"
-      Write-Host "Restore exception: " + $_.ToString()
+      Write-Host ("Restore exception: " + $_.ToString())
     }
   }
 
