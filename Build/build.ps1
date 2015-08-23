@@ -223,7 +223,7 @@ function DnxBuild($build)
     catch [System.Management.Automation.RemoteException]
     {
       Write-Host "Restore last exit code: $lastexitcode"
-      Write-Host "Restore exception: $_.ToString()"
+      Write-Host "Restore exception: " + $_.ToString()
     }
   }
 
