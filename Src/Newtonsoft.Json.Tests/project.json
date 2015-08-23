@@ -33,7 +33,7 @@
         "System.Collections.Immutable": "1.1.37"
       }
     },
-    ".NETFramework,Version=v4.0,Profile=Client": {
+    "net40": {
       "frameworkAssemblies": {
         "System.Collections": "",
         "System.ComponentModel.DataAnnotations": "",
