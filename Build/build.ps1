@@ -220,11 +220,10 @@ function DnxBuild($build)
       dnu restore "$workingSourceDir\Newtonsoft.Json\project.json" | Out-Default
       Write-Host "Restore last exit code: $lastexitcode"
     }
-    catch [Exception]
+    catch [System.Management.Automation.RemoteException]
     {
       Write-Host "Restore last exit code: $lastexitcode"
-      Write-Host "Restore exception: $_"
-      throw $_
+      Write-Host "Restore exception: $_.ToString()"
     }
   }
 
