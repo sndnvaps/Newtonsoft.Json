@@ -230,7 +230,6 @@ function DnxBuild($build)
   }
 
   exec { dnu build "$workingSourceDir\Newtonsoft.Json\project.json" --configuration Release | Out-Default }
-  exec { dnu build "$workingSourceDir\Newtonsoft.Json.Tests\project.json" --configuration Release | Out-Default }
 }
 
 function DnxTests($build)
@@ -250,11 +249,12 @@ function DnxTests($build)
       dnu restore "$workingSourceDir\Newtonsoft.Json.Tests\project.json" | Out-Default
       Write-Host "Restore last exit code: $lastexitcode"
     }
-    catch [Exception]
+    catch [System.Management.Automation.RemoteException]
     {
       Write-Host "Restore last exit code: $lastexitcode"
-      Write-Host "Restore exception: $_"
-      throw $_
+      Write-Host ("Restore exception: " + $_.ToString())
+      $global:lastexitcode = 0
+      $lastexitcode = 0
     }
   }
 
