@@ -11,7 +11,7 @@ AppPackages/
 _ReSharper.*
 *.ReSharper.user
 *.resharper.user
-project.lock.json
+*.lock.json
 *.xproj
 .vs/
 *.props

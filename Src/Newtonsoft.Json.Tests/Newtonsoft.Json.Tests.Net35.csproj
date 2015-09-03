@@ -361,6 +361,7 @@
     <Content Include="SpaceShipV2.bson">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <None Include="Newtonsoft.Json.Tests.Net35.project.json" />
     <None Include="TestObjects\SqlTypesDataSet.xsc">
       <DependentUpon>SqlTypesDataSet.xsd</DependentUpon>
     </None>
