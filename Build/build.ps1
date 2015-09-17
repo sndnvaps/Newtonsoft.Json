@@ -11,7 +11,7 @@
   $buildNuGet = $true
   $treatWarningsAsErrors = $false
   $workingName = if ($workingName) {$workingName} else {"Working"}
-  $dnvmVersion = "1.0.0-beta8-15530"
+  $dnvmVersion = "1.0.0-beta8-15618"
   
   $baseDir  = resolve-path ..
   $buildDir = "$baseDir\Build"
