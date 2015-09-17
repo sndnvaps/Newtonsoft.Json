@@ -12,7 +12,6 @@ _ReSharper.*
 *.ReSharper.user
 *.resharper.user
 *.lock.json
-*.xproj
 .vs/
 *.props
 *.targets
