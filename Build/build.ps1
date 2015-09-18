@@ -211,6 +211,7 @@ function DnxBuild($build)
 {
   $name = $build.Name
   $projectPath = "$workingSourceDir\Newtonsoft.Json\project.json"
+  $testProjectPath = "$workingSourceDir\Newtonsoft.Json.Tests\project.json"
 
   exec { dnvm install $dnvmVersion -r clr -u | Out-Default }
   exec { dnvm use $dnvmVersion -r clr | Out-Default }
@@ -219,7 +220,7 @@ function DnxBuild($build)
   Write-Host
   exec {
     try {
-      dnu restore $projectPath | Out-Default
+      dnu restore $projectPath $testProjectPath | Out-Default
       Write-Host "Restore last exit code: $lastexitcode"
     }
     catch [System.Management.Automation.RemoteException]
@@ -231,10 +232,8 @@ function DnxBuild($build)
     }
   }
 
-  
-
-  Write-Host -ForegroundColor Green "Building $projectPath"
-  exec { dnu build $projectPath --configuration Release | Out-Default }
+  Write-Host -ForegroundColor Green "Building $projectPath $testProjectPath"
+  exec { dnu build $projectPath $testProjectPath --configuration Release | Out-Default }
 }
 
 function DnxTests($build)
@@ -270,7 +269,7 @@ function DnxTests($build)
   try
   {
     Set-Location "$workingSourceDir\Newtonsoft.Json.Tests"
-    exec { dnx -p "$workingSourceDir\Newtonsoft.Json.Tests\project.json" --configuration Release test | Out-Default }
+    exec { dnx --configuration Release test | Out-Default }
   }
   finally
   {
