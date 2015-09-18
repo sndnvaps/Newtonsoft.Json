@@ -200,6 +200,8 @@ function MSBuildBuild($build)
   exec { .\Tools\NuGet\NuGet.exe update -self }
   exec { .\Tools\NuGet\NuGet.exe restore "$workingSourceDir\$name.sln" -verbosity detailed -configfile $workingSourceDir\nuget.config | Out-Default } "Error restoring $name"
 
+  dir $workingSourceDir\Newtonsoft.Json
+
   $constants = GetConstants $build.Constants $signAssemblies
 
   Write-Host
