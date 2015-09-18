@@ -1,9 +1,6 @@
 ﻿{
-  "dependencies": {
-    "NUnit": "2.6.2"
-  },
   "frameworks": {
-    "net35": {}
+    "net40": {}
   },
   "runtimes": {
     "win-anycpu": {}
