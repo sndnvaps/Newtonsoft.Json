@@ -56,7 +56,7 @@ task Clean {
 task Build -depends Clean { 
 
   Write-Host "Copying source to working source directory $workingSourceDir"
-  robocopy $sourceDir $workingSourceDir /MIR /NP /XD bin obj TestResults AppPackages $packageDirs /XF *.suo *.user | Out-Default
+  robocopy $sourceDir $workingSourceDir /MIR /NP /XD bin obj TestResults AppPackages $packageDirs /XF *.suo *.user *.project.lock.json | Out-Default
 
   Write-Host -ForegroundColor Green "Updating assembly version"
   Write-Host
@@ -195,21 +195,22 @@ function MSBuildBuild($build)
   $finalDir = $build.FinalDir
 
   Write-Host
-  Write-Host "Restoring $workingSourceDir\$name.sln"
+  Write-Host "Restoring $workingSourceDir\$name.sln" -ForegroundColor Green
   [Environment]::SetEnvironmentVariable("EnableNuGetPackageRestore", "true", "Process")
   exec { .\Tools\NuGet\NuGet.exe update -self }
-  exec { .\Tools\NuGet\NuGet.exe restore "$workingSourceDir\$name.sln" -verbosity detailed | Out-Default } "Error restoring $name"
+  exec { .\Tools\NuGet\NuGet.exe restore "$workingSourceDir\$name.sln" -verbosity detailed -configfile $workingSourceDir\nuget.config | Out-Default } "Error restoring $name"
 
   $constants = GetConstants $build.Constants $signAssemblies
 
   Write-Host
-  Write-Host "Building"
+  Write-Host "Building $workingSourceDir\$name.sln" -ForegroundColor Green
   exec { msbuild "/t:Clean;Rebuild" /p:Configuration=Release "/p:Platform=Any CPU" /p:OutputPath=bin\Release\$finalDir\ /p:AssemblyOriginatorKeyFile=$signKeyPath "/p:SignAssembly=$signAssemblies" "/p:TreatWarningsAsErrors=$treatWarningsAsErrors" "/p:VisualStudioVersion=14.0" /p:DefineConstants=`"$constants`" "$workingSourceDir\$name.sln" | Out-Default } "Error building $name"
 }
 
 function DnxBuild($build)
 {
   $name = $build.Name
+  $projectPath = "$workingSourceDir\Newtonsoft.Json\project.json"
 
   exec { dnvm install $dnvmVersion -r clr -u | Out-Default }
   exec { dnvm use $dnvmVersion -r clr | Out-Default }
@@ -218,7 +219,7 @@ function DnxBuild($build)
   Write-Host
   exec {
     try {
-      dnu restore "$workingSourceDir\Newtonsoft.Json\project.json" | Out-Default
+      dnu restore $projectPath | Out-Default
       Write-Host "Restore last exit code: $lastexitcode"
     }
     catch [System.Management.Automation.RemoteException]
@@ -230,7 +231,10 @@ function DnxBuild($build)
     }
   }
 
-  exec { dnu build "$workingSourceDir\Newtonsoft.Json\project.json" --configuration Release | Out-Default }
+  
+
+  Write-Host -ForegroundColor Green "Building $projectPath"
+  exec { dnu build $projectPath --configuration Release | Out-Default }
 }
 
 function DnxTests($build)
