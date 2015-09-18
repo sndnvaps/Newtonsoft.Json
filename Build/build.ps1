@@ -202,6 +202,14 @@ function MSBuildBuild($build)
 
   dir $workingSourceDir\Newtonsoft.Json
 
+  (Get-Content $workingSourceDir\Newtonsoft.Json\Newtonsoft.Json.project.lock.json) | ForEach-Object {
+    write-host $_
+  }
+
+  (Get-Content $workingSourceDir\Newtonsoft.Json.Tests\Newtonsoft.Json.Tests.project.lock.json) | ForEach-Object {
+    write-host $_
+  }
+
   $constants = GetConstants $build.Constants $signAssemblies
 
   Write-Host
