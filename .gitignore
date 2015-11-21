@@ -11,12 +11,7 @@ AppPackages/
 _ReSharper.*
 *.ReSharper.user
 *.resharper.user
-project.lock.json
-*.xproj
 .vs/
-*.props
-*.targets
-
-#NuGet
-packages
-!packages/repositories.config
+*.lock.json
+*.nuget.props
+*.nuget.targets

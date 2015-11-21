@@ -238,6 +238,22 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 
         [Test]
+        public void CoercedEmptyStringWithRequired_DisallowNull()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() =>
+            {
+                JsonConvert.DeserializeObject<Binding_DisallowNull>("{requiredProperty:''}");
+            }, "Required property 'RequiredProperty' expects a non-null value. Path '', line 1, position 21.");
+        }
+
+        [Test]
+        public void DisallowNull_NoValue()
+        {
+            Binding_DisallowNull o = JsonConvert.DeserializeObject<Binding_DisallowNull>("{}");
+            Assert.IsNull(o.RequiredProperty);
+        }
+
+        [Test]
         public void CoercedEmptyStringWithRequiredConstructor()
         {
             ExceptionAssert.Throws<JsonSerializationException>(() =>
@@ -250,6 +266,46 @@ namespace Newtonsoft.Json.Tests.Serialization
         {
             [JsonProperty(Required = Required.Always)]
             public Binding RequiredProperty { get; set; }
+        }
+
+        public class Binding_DisallowNull
+        {
+            [JsonProperty(Required = Required.DisallowNull)]
+            public Binding RequiredProperty { get; set; }
+        }
+
+        [Test]
+        public void Serialize_Required_DisallowedNull()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() =>
+            {
+                JsonConvert.SerializeObject(new Binding_DisallowNull());
+            }, "Cannot write a null value for property 'RequiredProperty'. Property requires a non-null value. Path ''.");
+        }
+
+        [Test]
+        public void Serialize_Required_DisallowedNull_NullValueHandlingIgnore()
+        {
+            string json = JsonConvert.SerializeObject(new Binding_DisallowNull(), new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+            Assert.AreEqual("{}", json);
+        }
+
+        [JsonObject(ItemRequired = Required.DisallowNull)]
+        public class DictionaryWithNoNull
+        {
+            public string Name { get; set; }
+        }
+
+        [Test]
+        public void Serialize_ItemRequired_DisallowedNull()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() =>
+            {
+                JsonConvert.SerializeObject(new DictionaryWithNoNull());
+            }, "Cannot write a null value for property 'Name'. Property requires a non-null value. Path ''.");
         }
 
         public class DictionaryKeyContractResolver : DefaultContractResolver
@@ -865,6 +921,29 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 
         [Test]
+        public void DeserializeVersionString()
+        {
+            string json = "['1.2.3.4']";
+            List<Version> deserialized = JsonConvert.DeserializeObject<List<Version>>(json);
+
+            Assert.AreEqual(1, deserialized[0].Major);
+            Assert.AreEqual(2, deserialized[0].Minor);
+            Assert.AreEqual(3, deserialized[0].Build);
+            Assert.AreEqual(4, deserialized[0].Revision);
+        }
+
+        [Test]
+        public void DeserializeVersionString_Fail()
+        {
+            string json = "['1.2.3.4444444444444444444444']";
+
+            ExceptionAssert.Throws<JsonSerializationException>(() =>
+            {
+                JsonConvert.DeserializeObject<List<Version>>(json);
+            }, @"Error converting value ""1.2.3.4444444444444444444444"" to type 'System.Version'. Path '[0]', line 1, position 31.");
+        }
+
+        [Test]
         public void DeserializeJObjectWithComments()
         {
             string json = @"/* Test */
@@ -881,10 +960,9 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(3, o.Count);
             Assert.AreEqual(true, (bool)o["A"]);
             Assert.AreEqual(false, (bool)o["B"]);
-            Assert.AreEqual(3, o["C"].Count());
-            Assert.AreEqual(JTokenType.Comment, o["C"][0].Type);
-            Assert.AreEqual(1, (int)o["C"][1]);
-            Assert.AreEqual(JTokenType.Comment, o["C"][2].Type);
+            Assert.AreEqual(1, o["C"].Count());
+            Assert.AreEqual(1, (int)o["C"][0]);
+
             Assert.IsTrue(JToken.DeepEquals(o, JObject.Parse(json)));
 
             json = @"{/* Test */}";
@@ -5175,7 +5253,7 @@ Path '', line 1, position 1.");
 
             var json = JsonConvert.SerializeObject(child, Formatting.Indented);
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<Dictionary<string, object>>(json); }, "Additional content found in JSON reference object. A JSON reference object should only have a $ref property. Path 'Father.$id', line 6, position 11.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<Dictionary<string, object>>(json); }, "Additional content found in JSON reference object. A JSON reference object should only have a $ref property. Path 'Father.$id', line 6, position 10.");
         }
 
         [Test]
@@ -5196,7 +5274,7 @@ Path '', line 1, position 1.");
 
                 var json = JsonConvert.SerializeObject(child, Formatting.Indented);
                 JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            }, "JSON reference $ref property must have a string or null value. Path 'Father.$ref', line 5, position 14.");
+            }, "JSON reference $ref property must have a string or null value. Path 'Father.$ref', line 5, position 13.");
         }
 
         [Test]
@@ -5417,7 +5495,7 @@ Path '', line 1, position 1.");
             }
             else
             {
-                ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<StringDictionaryTestClass>(json); }, "Cannot create and populate list type " + classRef + ". Path 'StringDictionaryProperty', line 2, position 32.");
+                ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<StringDictionaryTestClass>(json); }, "Cannot create and populate list type " + classRef + ". Path 'StringDictionaryProperty', line 2, position 31.");
             }
         }
 #endif
@@ -6774,7 +6852,7 @@ Path '', line 1, position 1.");
   null
 ]";
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => { List<int> numbers = JsonConvert.DeserializeObject<List<int>>(json); }, "Error converting value {null} to type 'System.Int32'. Path '[3]', line 5, position 7.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { List<int> numbers = JsonConvert.DeserializeObject<List<int>>(json); }, "Error converting value {null} to type 'System.Int32'. Path '[3]', line 5, position 6.");
         }
 
 #if !(PORTABLE || NETFX_CORE)
@@ -6813,7 +6891,7 @@ Path '', line 1, position 1.");
   ""NullableInteger2"": null
 }";
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<ConvertableIntTestClass>(json), "Error converting value 1 to type 'Newtonsoft.Json.Tests.ConvertibleInt'. Path 'Integer', line 2, position 15.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<ConvertableIntTestClass>(json), "Error converting value 1 to type 'Newtonsoft.Json.Tests.ConvertibleInt'. Path 'Integer', line 2, position 14.");
         }
 #endif
 
@@ -6850,7 +6928,7 @@ Path '', line 1, position 1.");
 }";
 
                 JsonConvert.DeserializeObject<TestObjects.MyClass>(json);
-            }, "Error reading integer. Unexpected token: Boolean. Path 'PreProperty', line 2, position 22.");
+            }, "Error reading integer. Unexpected token: Boolean. Path 'PreProperty', line 2, position 21.");
         }
 
         [Test]
@@ -7466,6 +7544,34 @@ Path '', line 1, position 1.");
         }
 
         [Test]
+        public void DateTimeDictionaryKey_DateTime_Iso_Local()
+        {
+            IDictionary<DateTime, int> dic1 = new Dictionary<DateTime, int>
+            {
+                { new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc), 1 },
+                { new DateTime(2013, 12, 12, 12, 12, 12, DateTimeKind.Utc), 2 }
+            };
+
+            string json = JsonConvert.SerializeObject(dic1, Formatting.Indented, new JsonSerializerSettings
+            {
+                DateTimeZoneHandling = DateTimeZoneHandling.Local
+            });
+
+            JObject o = JObject.Parse(json);
+            Assert.IsFalse(o.Properties().ElementAt(0).Name.Contains("Z"));
+            Assert.IsFalse(o.Properties().ElementAt(1).Name.Contains("Z"));
+
+            IDictionary<DateTime, int> dic2 = JsonConvert.DeserializeObject<IDictionary<DateTime, int>>(json, new JsonSerializerSettings
+            {
+                DateTimeZoneHandling = DateTimeZoneHandling.Utc
+            });
+
+            Assert.AreEqual(2, dic2.Count);
+            Assert.AreEqual(1, dic2[new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc)]);
+            Assert.AreEqual(2, dic2[new DateTime(2013, 12, 12, 12, 12, 12, DateTimeKind.Utc)]);
+        }
+
+        [Test]
         public void DateTimeDictionaryKey_DateTime_MS()
         {
             IDictionary<DateTime, int> dic1 = new Dictionary<DateTime, int>
@@ -8038,6 +8144,10 @@ Path '', line 1, position 1.");
         [Test]
         public void DateFormatString()
         {
+            CultureInfo culture = new CultureInfo("en-NZ");
+            culture.DateTimeFormat.AMDesignator = "a.m.";
+            culture.DateTimeFormat.PMDesignator = "p.m.";
+
             IList<object> dates = new List<object>
             {
                 new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc),
@@ -8047,7 +8157,7 @@ Path '', line 1, position 1.");
             string json = JsonConvert.SerializeObject(dates, Formatting.Indented, new JsonSerializerSettings
             {
                 DateFormatString = "yyyy tt",
-                Culture = new CultureInfo("en-NZ")
+                Culture = culture
             });
 
             StringAssert.AreEqual(@"[
@@ -8079,6 +8189,10 @@ Path '', line 1, position 1.");
         [Test]
         public void JsonSerializerDateFormatString()
         {
+            CultureInfo culture = new CultureInfo("en-NZ");
+            culture.DateTimeFormat.AMDesignator = "a.m.";
+            culture.DateTimeFormat.PMDesignator = "p.m.";
+
             IList<object> dates = new List<object>
             {
                 new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc),
@@ -8091,7 +8205,7 @@ Path '', line 1, position 1.");
             JsonSerializer serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 DateFormatString = "yyyy tt",
-                Culture = new CultureInfo("en-NZ"),
+                Culture = culture,
                 Formatting = Formatting.Indented
             });
             serializer.Serialize(jsonWriter, dates);
@@ -8444,6 +8558,57 @@ Path '', line 1, position 1.");
   },
   {
     ""$ref"": ""ae3c399c-058d-431d-91b0-a36c266441b9""
+  }
+]", json);
+        }
+
+        [Test]
+        public void NullReferenceResolver()
+        {
+            PersonReference john = new PersonReference
+            {
+                Id = new Guid("0B64FFDF-D155-44AD-9689-58D9ADB137F3"),
+                Name = "John Smith"
+            };
+
+            PersonReference jane = new PersonReference
+            {
+                Id = new Guid("AE3C399C-058D-431D-91B0-A36C266441B9"),
+                Name = "Jane Smith"
+            };
+
+            john.Spouse = jane;
+            jane.Spouse = john;
+
+            IList<PersonReference> people = new List<PersonReference>
+            {
+                john,
+                jane
+            };
+
+            string json = JsonConvert.SerializeObject(people, new JsonSerializerSettings
+            {
+#pragma warning disable 618
+                ReferenceResolver = null,
+#pragma warning restore 618
+                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                Formatting = Formatting.Indented
+            });
+
+            StringAssert.AreEqual(@"[
+  {
+    ""$id"": ""1"",
+    ""Name"": ""John Smith"",
+    ""Spouse"": {
+      ""$id"": ""2"",
+      ""Name"": ""Jane Smith"",
+      ""Spouse"": {
+        ""$ref"": ""1""
+      }
+    }
+  },
+  {
+    ""$ref"": ""2""
   }
 ]", json);
         }
@@ -9159,7 +9324,7 @@ Path '', line 1, position 1.");
                         new AttachmentReadConverter(),
                         new EncodingReadConverter());
                 },
-                "Cannot populate list type System.Net.Mime.HeaderCollection. Path 'Headers', line 26, position 15.");
+                "Cannot populate list type System.Net.Mime.HeaderCollection. Path 'Headers', line 26, position 14.");
         }
 
         public class MailAddressReadConverter : JsonConverter

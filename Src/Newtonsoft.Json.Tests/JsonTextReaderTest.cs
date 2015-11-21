@@ -24,6 +24,7 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
@@ -44,6 +45,11 @@ using NUnit.Framework;
 #endif
 using Newtonsoft.Json;
 using System.IO;
+#if NET20
+using Newtonsoft.Json.Utilities.LinqBridge;
+#else
+using System.Linq;
+#endif
 using System.Xml;
 using Newtonsoft.Json.Utilities;
 
@@ -52,6 +58,82 @@ namespace Newtonsoft.Json.Tests
     [TestFixture]
     public class JsonTextReaderTest : TestFixtureBase
     {
+        [Test]
+        public void LineInfoAndNewLines()
+        {
+            string json = "{}";
+
+            JsonTextReader jsonTextReader = new JsonTextReader(new StringReader(json));
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.StartObject, jsonTextReader.TokenType);
+            Assert.AreEqual(1, jsonTextReader.LineNumber);
+            Assert.AreEqual(1, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+
+            Assert.AreEqual(JsonToken.EndObject, jsonTextReader.TokenType);
+            Assert.AreEqual(1, jsonTextReader.LineNumber);
+            Assert.AreEqual(2, jsonTextReader.LinePosition);
+
+            json = "\n{\"a\":\"bc\"}";
+
+            jsonTextReader = new JsonTextReader(new StringReader(json));
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.StartObject, jsonTextReader.TokenType);
+            Assert.AreEqual(2, jsonTextReader.LineNumber);
+            Assert.AreEqual(1, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.PropertyName, jsonTextReader.TokenType);
+            Assert.AreEqual(2, jsonTextReader.LineNumber);
+            Assert.AreEqual(5, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.String, jsonTextReader.TokenType);
+            Assert.AreEqual(2, jsonTextReader.LineNumber);
+            Assert.AreEqual(9, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.EndObject, jsonTextReader.TokenType);
+            Assert.AreEqual(2, jsonTextReader.LineNumber);
+            Assert.AreEqual(10, jsonTextReader.LinePosition);
+
+            json = "\n{\"a\":\n\"bc\",\"d\":true\n}";
+
+            jsonTextReader = new JsonTextReader(new StringReader(json));
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.StartObject, jsonTextReader.TokenType);
+            Assert.AreEqual(2, jsonTextReader.LineNumber);
+            Assert.AreEqual(1, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.PropertyName, jsonTextReader.TokenType);
+            Assert.AreEqual(2, jsonTextReader.LineNumber);
+            Assert.AreEqual(5, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.String, jsonTextReader.TokenType);
+            Assert.AreEqual(3, jsonTextReader.LineNumber);
+            Assert.AreEqual(4, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.PropertyName, jsonTextReader.TokenType);
+            Assert.AreEqual(3, jsonTextReader.LineNumber);
+            Assert.AreEqual(9, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.Boolean, jsonTextReader.TokenType);
+            Assert.AreEqual(3, jsonTextReader.LineNumber);
+            Assert.AreEqual(13, jsonTextReader.LinePosition);
+
+            Assert.IsTrue(jsonTextReader.Read());
+            Assert.AreEqual(JsonToken.EndObject, jsonTextReader.TokenType);
+            Assert.AreEqual(4, jsonTextReader.LineNumber);
+            Assert.AreEqual(1, jsonTextReader.LinePosition);
+        }
         [Test]
         public void ReadCommentInsideArray()
         {
@@ -192,7 +274,7 @@ third line", jsonTextReader.Value);
             Assert.IsTrue(jsonTextReader.Read());
             Assert.AreEqual(JsonToken.PropertyName, jsonTextReader.TokenType);
 
-            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "JSON integer 333333333333333333333333333333333333333 is too large or small for an Int32. Path 'ChildId', line 2, position 53.");
+            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "JSON integer 333333333333333333333333333333333333333 is too large or small for an Int32. Path 'ChildId', line 2, position 52.");
 
             Assert.IsTrue(jsonTextReader.Read());
             Assert.AreEqual(JsonToken.EndObject, jsonTextReader.TokenType);
@@ -215,13 +297,13 @@ third line", jsonTextReader.Value);
             Assert.IsTrue(jsonTextReader.Read());
             Assert.AreEqual(JsonToken.StartArray, jsonTextReader.TokenType);
 
-            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "JSON integer 333333333333333333333333333333333333333 is too large or small for an Int32. Path '[0]', line 2, position 42.");
+            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "JSON integer 333333333333333333333333333333333333333 is too large or small for an Int32. Path '[0]', line 2, position 41.");
 
-            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "Input string '3.3' is not a valid integer. Path '[1]', line 3, position 6.");
+            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "Input string '3.3' is not a valid integer. Path '[1]', line 3, position 5.");
 
-            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "Error reading integer. Unexpected token: Undefined. Path '[2]', line 4, position 3.");
+            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "Error reading integer. Unexpected token: Undefined. Path '[2]', line 4, position 2.");
 
-            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "Input string '0f' is not a valid integer. Path '[3]', line 5, position 5.");
+            ExceptionAssert.Throws<JsonReaderException>(() => jsonTextReader.ReadAsInt32(), "Input string '0f' is not a valid integer. Path '[3]', line 5, position 4.");
 
             Assert.IsTrue(jsonTextReader.Read());
             Assert.AreEqual(JsonToken.EndArray, jsonTextReader.TokenType);
@@ -563,7 +645,7 @@ third line", jsonTextReader.Value);
                 while (reader.Read())
                 {
                 }
-            }, "Additional text encountered after finished reading JSON content: ,. Path '', line 5, position 2.");
+            }, "Additional text encountered after finished reading JSON content: ,. Path '', line 5, position 1.");
         }
 
         [Test]
@@ -595,7 +677,7 @@ third line", jsonTextReader.Value);
             reader.Read();
             Assert.AreEqual(5, reader.LineNumber);
 
-            ExceptionAssert.Throws<JsonReaderException>(() => { reader.Read(); }, "Additional text encountered after finished reading JSON content: c. Path '', line 5, position 2.");
+            ExceptionAssert.Throws<JsonReaderException>(() => { reader.Read(); }, "Additional text encountered after finished reading JSON content: c. Path '', line 5, position 1.");
         }
 
         [Test]
@@ -662,48 +744,48 @@ third line", jsonTextReader.Value);
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.PropertyName);
                 Assert.AreEqual(jsonReader.Value, "CPU");
                 Assert.AreEqual(2, jsonReader.LineNumber);
-                Assert.AreEqual(7, jsonReader.LinePosition);
+                Assert.AreEqual(6, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(JsonToken.String, jsonReader.TokenType);
                 Assert.AreEqual("Intel", jsonReader.Value);
                 Assert.AreEqual(2, jsonReader.LineNumber);
-                Assert.AreEqual(15, jsonReader.LinePosition);
+                Assert.AreEqual(14, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.PropertyName);
                 Assert.AreEqual(jsonReader.Value, "Drives");
                 Assert.AreEqual(3, jsonReader.LineNumber);
-                Assert.AreEqual(10, jsonReader.LinePosition);
+                Assert.AreEqual(9, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.StartArray);
                 Assert.AreEqual(3, jsonReader.LineNumber);
-                Assert.AreEqual(12, jsonReader.LinePosition);
+                Assert.AreEqual(11, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.String);
                 Assert.AreEqual(jsonReader.Value, "DVD read/writer");
                 Assert.AreEqual(jsonReader.QuoteChar, '\'');
                 Assert.AreEqual(4, jsonReader.LineNumber);
-                Assert.AreEqual(22, jsonReader.LinePosition);
+                Assert.AreEqual(21, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.String);
                 Assert.AreEqual(jsonReader.Value, "500 gigabyte hard drive");
                 Assert.AreEqual(jsonReader.QuoteChar, '"');
                 Assert.AreEqual(5, jsonReader.LineNumber);
-                Assert.AreEqual(30, jsonReader.LinePosition);
+                Assert.AreEqual(29, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.EndArray);
                 Assert.AreEqual(6, jsonReader.LineNumber);
-                Assert.AreEqual(4, jsonReader.LinePosition);
+                Assert.AreEqual(3, jsonReader.LinePosition);
 
                 jsonReader.Read();
                 Assert.AreEqual(jsonReader.TokenType, JsonToken.EndObject);
                 Assert.AreEqual(7, jsonReader.LineNumber);
-                Assert.AreEqual(2, jsonReader.LinePosition);
+                Assert.AreEqual(1, jsonReader.LinePosition);
 
                 Assert.IsFalse(jsonReader.Read());
             }
@@ -1090,6 +1172,78 @@ third line", jsonTextReader.Value);
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.PropertyName, reader.TokenType);
             Assert.AreEqual("type", reader.Value);
+        }
+
+        public class FakeBufferPool : IJsonBufferPool<char>
+        {
+            public readonly List<char[]> FreeBuffers = new List<char[]>();
+            public readonly List<char[]> UsedBuffers = new List<char[]>();
+
+            public char[] RentBuffer(int minSize)
+            {
+                char[] buffer = FreeBuffers.FirstOrDefault(b => b.Length >= minSize);
+                if (buffer != null)
+                {
+                    FreeBuffers.Remove(buffer);
+                    UsedBuffers.Add(buffer);
+
+                    return buffer;
+                }
+
+                buffer = new char[minSize];
+                UsedBuffers.Add(buffer);
+
+                return buffer;
+            }
+
+            public void ReturnBuffer(ref char[] buffer)
+            {
+                if (UsedBuffers.Remove(buffer))
+                {
+                    FreeBuffers.Add(buffer);
+
+                    // smallest first so the first buffer large enough is rented
+                    FreeBuffers.Sort((b1, b2) => Comparer<int>.Default.Compare(b1.Length, b2.Length));
+                }
+
+                buffer = null;
+            }
+        }
+
+        [Test]
+        public void BufferTest()
+        {
+            string json = @"{
+              ""CPU"": ""Intel"",
+              ""Description"": ""Amazing!\nBuy now!"",
+              ""Drives"": [
+                ""DVD read/writer"",
+                ""500 gigabyte hard drive"",
+                ""Amazing Drive" + new string('!', 9000) + @"""
+              ]
+            }";
+
+            FakeBufferPool bufferPool = new FakeBufferPool();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                using (JsonTextReader reader = new JsonTextReader(new StringReader(json)))
+                {
+                    reader.BufferPool = bufferPool;
+
+                    while (reader.Read())
+                    {
+                    }
+                }
+
+                if ((i + 1) % 100 == 0)
+                {
+                    Console.WriteLine("Allocated buffers: " + bufferPool.FreeBuffers.Count);
+                }
+            }
+
+            Assert.AreEqual(0, bufferPool.UsedBuffers.Count);
+            Assert.AreEqual(6, bufferPool.FreeBuffers.Count);
         }
 
         [Test]
@@ -1744,7 +1898,7 @@ third line", jsonTextReader.Value);
             reader.Read();
             Assert.AreEqual(JsonToken.Boolean, reader.TokenType);
 
-            ExceptionAssert.Throws<JsonReaderException>(() => { reader.Read(); }, @"Invalid character after parsing property name. Expected ':' but got: "". Path 'A', line 3, position 9.");
+            ExceptionAssert.Throws<JsonReaderException>(() => { reader.Read(); }, @"Invalid character after parsing property name. Expected ':' but got: "". Path 'A', line 3, position 8.");
         }
 
         [Test]
@@ -3246,12 +3400,11 @@ null//comment
                     {
                     }
                 },
-                "Unexpected character encountered while parsing value: !. Path 'frameworks.dnxcore50.dependencies.['System.Xml.ReaderWriter'].source', line 6, position 21.");
+                "Unexpected character encountered while parsing value: !. Path 'frameworks.dnxcore50.dependencies['System.Xml.ReaderWriter'].source', line 6, position 20.");
         }
 
 #if !DNXCORE50
         [Test]
-        [Ignore("Fix this next major version")]
         public void LinePositionOnNewLine()
         {
             string json1 = "{'a':'bc'}";

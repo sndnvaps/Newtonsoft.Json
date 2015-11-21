@@ -113,7 +113,7 @@ namespace Newtonsoft.Json
             StateArray = BuildStateArray();
         }
 
-        private readonly List<JsonPosition> _stack;
+        private List<JsonPosition> _stack;
         private JsonPosition _currentPosition;
         private State _currentState;
         private Formatting _formatting;
@@ -136,9 +136,11 @@ namespace Newtonsoft.Json
         {
             get
             {
-                int depth = _stack.Count;
+                int depth = (_stack != null) ? _stack.Count : 0;
                 if (Peek() != JsonContainerType.None)
+                {
                     depth++;
+                }
 
                 return depth;
             }
@@ -180,10 +182,12 @@ namespace Newtonsoft.Json
         {
             get
             {
-                if (_currentPosition.Type == JsonContainerType.None)
+                if (_currentPosition.Type == JsonContainerType.None || _stack == null)
+                {
                     return string.Empty;
+                }
 
-                return JsonPosition.BuildPath(_stack);
+                return JsonPosition.BuildPath(_stack, null);
             }
         }
 
@@ -195,17 +199,17 @@ namespace Newtonsoft.Json
             get
             {
                 if (_currentPosition.Type == JsonContainerType.None)
+                {
                     return string.Empty;
+                }
 
                 bool insideContainer = (_currentState != State.ArrayStart
                                         && _currentState != State.ConstructorStart
                                         && _currentState != State.ObjectStart);
 
-                IEnumerable<JsonPosition> positions = (!insideContainer)
-                    ? _stack
-                    : _stack.Concat(new[] { _currentPosition });
+                JsonPosition? current = insideContainer ? (JsonPosition?) _currentPosition : null;
 
-                return JsonPosition.BuildPath(positions);
+                return JsonPosition.BuildPath(_stack, current);
             }
         }
 
@@ -222,7 +226,15 @@ namespace Newtonsoft.Json
         public Formatting Formatting
         {
             get { return _formatting; }
-            set { _formatting = value; }
+            set
+            {
+                if (value < Formatting.None || value > Formatting.Indented)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                _formatting = value;
+            }
         }
 
         /// <summary>
@@ -231,7 +243,15 @@ namespace Newtonsoft.Json
         public DateFormatHandling DateFormatHandling
         {
             get { return _dateFormatHandling; }
-            set { _dateFormatHandling = value; }
+            set
+            {
+                if (value < DateFormatHandling.IsoDateFormat || value > DateFormatHandling.MicrosoftDateFormat)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                _dateFormatHandling = value;
+            }
         }
 
         /// <summary>
@@ -240,7 +260,15 @@ namespace Newtonsoft.Json
         public DateTimeZoneHandling DateTimeZoneHandling
         {
             get { return _dateTimeZoneHandling; }
-            set { _dateTimeZoneHandling = value; }
+            set
+            {
+                if (value < DateTimeZoneHandling.Local || value > DateTimeZoneHandling.RoundtripKind)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                _dateTimeZoneHandling = value;
+            }
         }
 
         /// <summary>
@@ -251,6 +279,11 @@ namespace Newtonsoft.Json
             get { return _stringEscapeHandling; }
             set
             {
+                if (value < StringEscapeHandling.Default || value > StringEscapeHandling.EscapeHtml)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
                 _stringEscapeHandling = value;
                 OnStringEscapeHandlingChanged();
             }
@@ -269,7 +302,15 @@ namespace Newtonsoft.Json
         public FloatFormatHandling FloatFormatHandling
         {
             get { return _floatFormatHandling; }
-            set { _floatFormatHandling = value; }
+            set
+            {
+                if (value < FloatFormatHandling.String || value > FloatFormatHandling.DefaultValue)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                _floatFormatHandling = value;
+            }
         }
 
         /// <summary>
@@ -295,7 +336,6 @@ namespace Newtonsoft.Json
         /// </summary>
         protected JsonWriter()
         {
-            _stack = new List<JsonPosition>(4);
             _currentState = State.Start;
             _formatting = Formatting.None;
             _dateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind;
@@ -312,7 +352,14 @@ namespace Newtonsoft.Json
         private void Push(JsonContainerType value)
         {
             if (_currentPosition.Type != JsonContainerType.None)
+            {
+                if (_stack == null)
+                {
+                    _stack = new List<JsonPosition>();
+                }
+
                 _stack.Add(_currentPosition);
+            }
 
             _currentPosition = new JsonPosition(value);
         }
@@ -321,7 +368,7 @@ namespace Newtonsoft.Json
         {
             JsonPosition oldPosition = _currentPosition;
 
-            if (_stack.Count > 0)
+            if (_stack != null && _stack.Count > 0)
             {
                 _currentPosition = _stack[_stack.Count - 1];
                 _stack.RemoveAt(_stack.Count - 1);
@@ -434,7 +481,7 @@ namespace Newtonsoft.Json
         /// <param name="reader">The <see cref="JsonReader"/> to read the token from.</param>
         public void WriteToken(JsonReader reader)
         {
-            WriteToken(reader, true, true);
+            WriteToken(reader, true, true, true);
         }
 
         /// <summary>
@@ -446,7 +493,7 @@ namespace Newtonsoft.Json
         {
             ValidationUtils.ArgumentNotNull(reader, "reader");
 
-            WriteToken(reader, writeChildren, true);
+            WriteToken(reader, writeChildren, true, true);
         }
 
         /// <summary>
@@ -471,7 +518,7 @@ namespace Newtonsoft.Json
             WriteTokenInternal(token, null);
         }
 
-        internal void WriteToken(JsonReader reader, bool writeChildren, bool writeDateConstructorAsDate)
+        internal void WriteToken(JsonReader reader, bool writeChildren, bool writeDateConstructorAsDate, bool writeComments)
         {
             int initialDepth;
 
@@ -482,18 +529,25 @@ namespace Newtonsoft.Json
             else
                 initialDepth = reader.Depth;
 
-            WriteToken(reader, initialDepth, writeChildren, writeDateConstructorAsDate);
+            WriteToken(reader, initialDepth, writeChildren, writeDateConstructorAsDate, writeComments);
         }
 
-        internal void WriteToken(JsonReader reader, int initialDepth, bool writeChildren, bool writeDateConstructorAsDate)
+        internal void WriteToken(JsonReader reader, int initialDepth, bool writeChildren, bool writeDateConstructorAsDate, bool writeComments)
         {
             do
             {
                 // write a JValue date when the constructor is for a date
                 if (writeDateConstructorAsDate && reader.TokenType == JsonToken.StartConstructor && string.Equals(reader.Value.ToString(), "Date", StringComparison.Ordinal))
+                {
                     WriteConstructorDate(reader);
+                }
                 else
-                    WriteTokenInternal(reader.TokenType, reader.Value);
+                {
+                    if (reader.TokenType != JsonToken.Comment || writeComments)
+                    {
+                        WriteTokenInternal(reader.TokenType, reader.Value);
+                    }
+                }
             } while (
                 // stop if we have reached the end of the token being read
                 initialDepth - 1 < reader.Depth - (JsonTokenUtils.IsEndToken(reader.TokenType) ? 1 : 0)

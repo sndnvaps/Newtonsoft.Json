@@ -454,31 +454,43 @@ namespace Newtonsoft.Json.Utilities
                 return ConvertResult.Success;
             }
 
-            if (initialValue is string)
+            string s = initialValue as string;
+            if (s != null)
             {
                 if (targetType == typeof(Guid))
                 {
-                    value = new Guid((string)initialValue);
+                    value = new Guid(s);
                     return ConvertResult.Success;
                 }
                 if (targetType == typeof(Uri))
                 {
-                    value = new Uri((string)initialValue, UriKind.RelativeOrAbsolute);
+                    value = new Uri(s, UriKind.RelativeOrAbsolute);
                     return ConvertResult.Success;
                 }
                 if (targetType == typeof(TimeSpan))
                 {
-                    value = ParseTimeSpan((string)initialValue);
+                    value = ParseTimeSpan(s);
                     return ConvertResult.Success;
                 }
                 if (targetType == typeof(byte[]))
                 {
-                    value = System.Convert.FromBase64String((string)initialValue);
+                    value = System.Convert.FromBase64String(s);
                     return ConvertResult.Success;
+                }
+                if (targetType == typeof(Version))
+                {
+                    Version result;
+                    if (VersionTryParse(s, out result))
+                    {
+                        value = result;
+                        return ConvertResult.Success;
+                    }
+                    value = null;
+                    return ConvertResult.NoValidConversion;
                 }
                 if (typeof(Type).IsAssignableFrom(targetType))
                 {
-                    value = Type.GetType((string)initialValue, true);
+                    value = Type.GetType(s, true);
                     return ConvertResult.Success;
                 }
             }
@@ -625,6 +637,25 @@ namespace Newtonsoft.Json.Utilities
             return JsonTypeReflector.GetTypeConverter(t);
         }
 #endif
+
+        public static bool VersionTryParse(string input, out Version result)
+        {
+#if !(NET20 || NET35)
+            return Version.TryParse(input, out result);
+#else
+            // improve failure performance with regex?
+            try
+            {
+                result = new Version(input);
+                return true;
+            }
+            catch
+            {
+                result = null;
+                return false;
+            }
+#endif
+        }
 
         public static bool IsInteger(object value)
         {
@@ -826,6 +857,36 @@ namespace Newtonsoft.Json.Utilities
 #else
             return Guid.TryParseExact(s, "D", out g);
 #endif
+        }
+
+        public static int HexTextToInt(char[] text, int start, int end)
+        {
+            int value = 0;
+            for (int i = start; i < end; i++)
+            {
+                value += HexCharToInt(text[i]) << ((end - 1 - i) * 4);
+            }
+            return value;
+        }
+
+        private static int HexCharToInt(char ch)
+        {
+            if (ch <= 57 && ch >= 48)
+            {
+                return ch - 48;
+            }
+
+            if (ch <= 70 && ch >= 65)
+            {
+                return ch - 55;
+            }
+
+            if (ch <= 102 && ch >= 97)
+            {
+                return ch - 87;
+            }
+
+            throw new FormatException("Invalid hex character: " + ch);
         }
     }
 }

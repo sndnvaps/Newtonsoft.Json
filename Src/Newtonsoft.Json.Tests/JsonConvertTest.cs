@@ -61,6 +61,76 @@ namespace Newtonsoft.Json.Tests
     public class JsonConvertTest : TestFixtureBase
     {
         [Test]
+        public void ToStringEnsureEscapedArrayLength()
+        {
+            const char nonAsciiChar = (char)257;
+            const char escapableNonQuoteAsciiChar = '\0';
+
+            string value = nonAsciiChar + @"\" + escapableNonQuoteAsciiChar;
+
+            string convertedValue = JsonConvert.ToString((object)value);
+            Assert.AreEqual(@"""" + nonAsciiChar + @"\\\u0000""", convertedValue);
+        }
+
+        public class PopulateTestObject
+        {
+            public decimal Prop { get; set; }
+        }
+
+        [Test]
+        public void PopulateObjectWithHeaderComment()
+        {
+            string json = @"// file header
+{
+  ""prop"": 1.0
+}";
+
+            PopulateTestObject o = new PopulateTestObject();
+            JsonConvert.PopulateObject(json, o);
+
+            Assert.AreEqual(1m, o.Prop);
+        }
+
+        [Test]
+        public void PopulateObjectWithMultipleHeaderComment()
+        {
+            string json = @"// file header
+// another file header?
+{
+  ""prop"": 1.0
+}";
+
+            PopulateTestObject o = new PopulateTestObject();
+            JsonConvert.PopulateObject(json, o);
+
+            Assert.AreEqual(1m, o.Prop);
+        }
+
+        [Test]
+        public void PopulateObjectWithNoContent()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() =>
+            {
+                string json = @"";
+
+                PopulateTestObject o = new PopulateTestObject();
+                JsonConvert.PopulateObject(json, o);
+            }, "No JSON content found. Path '', line 0, position 0.");
+        }
+
+        [Test]
+        public void PopulateObjectWithOnlyComment()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() =>
+            {
+                string json = @"// file header";
+
+                PopulateTestObject o = new PopulateTestObject();
+                JsonConvert.PopulateObject(json, o);
+            }, "No JSON content found. Path '', line 1, position 14.");
+        }
+
+        [Test]
         public void DefaultSettings()
         {
             try
